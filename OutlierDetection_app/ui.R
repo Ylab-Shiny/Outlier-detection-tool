@@ -1,5 +1,5 @@
 ##############################################################################################################################
-#### 中部大電力消費実績描画アプリ -- ui.R ####################################################################################
+#### 外れ値特定ツール -- ui.R ################################################################################################
 ##############################################################################################################################
 # ライブラリ一覧
 {
@@ -17,19 +17,22 @@ header <- dashboardHeader(title = "スマートBEMSの外れ値検出ツール",
 sidebar <- dashboardSidebar(
   # サイドバーメニュー
   sidebarMenu(
-    menuItem("外れ値リスト", tabName = "OutlierList", icon = icon("table"))
+    menuItem("外れ値の所在リスト", tabName = "OutlierList", icon = icon("list")),
+    menuItem("外れ値の時刻と外れ値", tabName = "Outliers", icon = icon("crosshairs"))
   ),
   
   # ファイルのアップロードUI
   fileInput("file", "csvファイルをアップロードしてください",
-            accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+            accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+  
+  uiOutput("columns_out")
 ) ### sidebarの最終部分
 
 # body #
 body <- dashboardBody(
   tabItems(
-    tabItem(tabName = "OutlierList",
-            dataTableOutput("DataTable"))
+    tabItem(tabName = "OutlierList", dataTableOutput("DataTable")),
+    tabItem(tabName = "Outliers", dataTableOutput("dt_each"))
   )
 ) ### bodyの最終部分
 
