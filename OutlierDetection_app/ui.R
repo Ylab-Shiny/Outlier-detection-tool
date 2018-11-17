@@ -18,21 +18,35 @@ sidebar <- dashboardSidebar(
   # サイドバーメニュー
   sidebarMenu(
     menuItem("外れ値の所在リスト", tabName = "OutlierList", icon = icon("list")),
-    menuItem("外れ値の時刻と外れ値", tabName = "Outliers", icon = icon("crosshairs"))
+    menuItem("外れ値の時刻と外れ値", tabName = "Outliers", icon = icon("crosshairs")),
+    menuItem("欠損種類の判別", tabName = "Dataset", icon = icon("table")),
+    menuItem("集計", tabName = "Summary", icon = icon("info")),
+    menuItem("データの散布図", tabName = "Scatter", icon = icon("print")),
+    menuItem("トレンドグラフ", tabName = "Trend", icon = icon("dashboard"))
   ),
   
   # ファイルのアップロードUI
   fileInput("file", "csvファイルをアップロードしてください",
             accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
   
-  uiOutput("columns_out")
+  uiOutput("columns_ls"),
+  
+  uiOutput("DateRange")
 ) ### sidebarの最終部分
 
 # body #
 body <- dashboardBody(
   tabItems(
     tabItem(tabName = "OutlierList", dataTableOutput("DataTable")),
-    tabItem(tabName = "Outliers", dataTableOutput("dt_each"))
+    tabItem(tabName = "Outliers", dataTableOutput("dt_each")),
+    tabItem(tabName = "Dataset", dataTableOutput("dt_conv"), 
+            downloadButton("downloadData", "データセットのダウンロード")),
+    tabItem(tabName = "Summary", h2("外れ値を含めた集計"), dataTableOutput("summary_ori"),
+            h2("外れ値を欠損値に置き換えた後の集計"), dataTableOutput("summary_con")),
+    tabItem(tabName = "Scatter", plotOutput("scatterPlot"),
+            downloadButton("downloadSplot", "散布図のダウンロード")),
+    tabItem(tabName = "Trend", plotOutput("Trendgragh"),
+            downloadButton("downloadTgragh", "トレンドグラフのダウンロード"))
   )
 ) ### bodyの最終部分
 
