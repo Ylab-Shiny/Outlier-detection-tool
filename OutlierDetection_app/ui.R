@@ -19,7 +19,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("外れ値の所在リスト", tabName = "OutlierList", icon = icon("list")),
     menuItem("外れ値の時刻と外れ値", tabName = "Outliers", icon = icon("crosshairs")),
-    menuItem("欠損種類の判別", tabName = "Dataset", icon = icon("table")),
+    menuItem("置き換え後のデータ", tabName = "Dataset", icon = icon("table")),
     menuItem("集計", tabName = "Summary", icon = icon("info")),
     menuItem("データの散布図", tabName = "Scatter", icon = icon("print")),
     menuItem("トレンドグラフ", tabName = "Trend", icon = icon("dashboard"))

@@ -29,13 +29,26 @@ row_packs_isnt_out <- row_packs(
 ## shinyサーバー ##
 shinyServer(function(input, output, session){
   
-  # 初期データ
+  ## 初期データ #################################
   initData <- reactive({
     firstData <- read_csv(input$file$datapath)
     names(firstData)[1] <- "label"
     
     return(firstData)
   }) ### initDataの最終部分
+  
+  initData2 <- reactive({
+    firstData <- initData() %>% select(label, input$c_ls)
+    C_interval <- firstData %>% select(input$c_ls) %>% 
+      transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T))) %>% 
+      transmute_all(within_range)
+    names(C_interval) <- "CI"
+    secondData <- cbind(firstData, C_interval) %>% as.data.frame()
+    
+    return(secondData)
+  }) ### initData2の最終部分
+  ##############################################
+  
   
   # zスコアに変換
   dataZ <- reactive({
@@ -94,7 +107,7 @@ shinyServer(function(input, output, session){
   # 列ごとに外れ値と時刻を取り出す
   outliers_each <- reactive({
     if (!is.null(input$file)) {
-      firstData <- initData() %>% mutate(id = c(1:nrow(initData()))) %>% select(label, id, input$c_ls)
+      firstData <- initData() %>% select(label, input$c_ls)
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
       ids <- report() %>% filter(`列名` == input$c_ls)
@@ -230,19 +243,15 @@ shinyServer(function(input, output, session){
   Data_scat <- reactive({
     if (!is.null(input$file)) {
       # NAのある行を除いておく
-      firstData <- initData() %>% select(label, input$c_ls)
+      firstData <- initData2()
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
-      C_interval <- secondData %>% select(input$c_ls) %>% 
-        transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T))) %>% 
-        transmute_all(within_range)
-      thirdData <- cbind(secondData, C_interval) %>% as.data.frame()
-      names(thirdData) <- c("Time", "Values", "CoinfidenceInterval")
+      names(secondData) <- c("Time", "Values", "CoinfidenceInterval")
     } else {
-      thirdData <- NULL
+      secondData <- NULL
     }
     
-    return(thirdData)
+    return(secondData)
   }) ### Data_scatの最終部分
   
   # 散布図オブジェクト Splot
