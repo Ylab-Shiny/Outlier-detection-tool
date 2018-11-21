@@ -126,7 +126,8 @@ shinyServer(function(input, output, session){
       firstData <- initData() %>% select(label, input$c_ls)
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
-      secondData[outliers_each()$id, 2] <- NA
+      ids <- report() %>% filter(`列名` == input$c_ls)
+      secondData[[2]][ids[[2]]] <- NA
     } else {
       secondData <- NULL
     }
