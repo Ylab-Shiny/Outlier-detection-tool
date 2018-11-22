@@ -31,11 +31,43 @@ shinyServer(function(input, output, session){
   
   ## 初期データ #################################
   initData <- reactive({
-    firstData <- read_csv(input$file$datapath)
-    names(firstData)[1] <- "label"
+    if (!is.null(input$file)) {
+      firstData <- read_csv(input$file$datapath)
+      names(firstData)[1] <- "label"
+    } else {
+      firstData <- NULL
+    }
     
     return(firstData)
   }) ### initDataの最終部分
+  
+  # 初期データの出力
+  output$initData <- renderDataTable({
+    datatable(initData(),
+              options = list(
+                lengthMenu = c(10, 100, 1000),
+                pageLength = 100,
+                width = 1000,
+                scrollX = "200px",
+                scrollY = "700px",
+                scrollCollapse = T
+              ))
+  }) ### DataTableの最終部分
+  
+  # 外れ値判定を行う日付範囲
+  theDate <- reactive({
+    if (!is.null(input$file)) {
+      texts <- paste0("外れ値判定を行った日付範囲は", substr(initData()$label[1], 1, 10),
+                      "から", substr(initData()$label[nrow(initData())], 1, 10), "です")
+    } else {
+      texts <- NULL
+    }
+    
+    return(texts)
+  }) ### theDateの最終部分
+  
+  # theDateの出力
+  output$d_date <-  renderText(theDate())
   
   initData2 <- reactive({
     firstData <- initData() %>% select(label, input$c_ls)
@@ -53,8 +85,7 @@ shinyServer(function(input, output, session){
   # zスコアに変換
   dataZ <- reactive({
     if (!is.null(input$file)) {
-      firstData <- initData() %>% mutate(date = substr(label, 1, 10)) %>% 
-        filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
+      firstData <- initData() 
       # 文字型になっている数値を数値型に変換
       secondData <- firstData[, -1] %>% transmute_all(as.numeric)
       thirdData <- secondData %>% transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T)))
@@ -94,8 +125,8 @@ shinyServer(function(input, output, session){
   # データ列のプルダウンリスト
   output$columns_ls <- renderUI({
     if (!is.null(input$file)) {
-      cnames <- read_csv(input$file$datapath, col_names = F, n_max = 1)
-      ls <- unique(as.character(cnames[,-1]))
+      cnames <- names(initData())
+      ls <- unique(as.character(cnames[-1]))
       si <- selectInput("c_ls", "列名を選択してください", ls, multiple = F)
     } else {
       si <- NULL
@@ -107,17 +138,15 @@ shinyServer(function(input, output, session){
   # 列ごとに外れ値と時刻を取り出す
   outliers_each <- reactive({
     if (!is.null(input$file)) {
-      firstData <- initData() %>% select(label, input$c_ls)
-      secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
-        filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
+      firstData <- initData() %>% select(label, input$c_ls) %>% mutate(`行番号` = c(1:nrow(initData())))
       ids <- report() %>% filter(`列名` == input$c_ls)
-      thirdData <- secondData[ids[[2]],]
-      names(thirdData)[1] <- "時刻"
+      secondData <- firstData[ids[[2]],]
+      names(secondData)[1] <- "時刻"
     } else {
-      thirdData <- NULL
+      secondData <- NULL
     }
     
-    return(thirdData)
+    return(secondData)
   }) ### outliers_eachの最終部分
   
   # 各列の外れ値をDTで出力
@@ -137,10 +166,10 @@ shinyServer(function(input, output, session){
   ConvData <- reactive({
     if (!is.null(input$file)) {
       firstData <- initData() %>% select(label, input$c_ls)
+      ids <- report() %>% filter(`列名` == input$c_ls)
+      firstData[[2]][ids[[2]]] <- NA
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
-      ids <- report() %>% filter(`列名` == input$c_ls)
-      secondData[[2]][ids[[2]]] <- NA
     } else {
       secondData <- NULL
     }
@@ -148,9 +177,34 @@ shinyServer(function(input, output, session){
     return(secondData)
   }) ### ConvDataの最終部分
   
+  ConvData2 <- reactive({
+    if (!is.null(input$file)) {
+      namels <- names(initData())
+      
+      for (i in 1:length(namels)) {
+        if (i == 1) {
+          firstData <- initData()
+          df <- as.character(firstData[[1]])
+        } else {
+          x <- firstData[[i]]
+          ids <- report() %>% filter(`列名` == namels[i])
+          x[ids[[2]]] <- NA
+          df <- cbind(df, x)
+        }
+      }
+      df <- as.data.frame(df)
+      names(df) <- namels
+      
+    } else {
+      df <- NULL
+    }
+    
+    return(df)
+  }) ### ConvData2の最終部分
+  
   # 外れ値をNAに変換したデータセットをDTで出力
   output$dt_conv <- renderDataTable({
-    datatable(ConvData(),
+    datatable(ConvData2(),
               options = list(
                 lengthMenu = c(10, 100, 1000),
                 pageLength = 100,
@@ -279,12 +333,11 @@ shinyServer(function(input, output, session){
     filename = function() {
       paste0("DF", substr(input$theRange[1],1,4), "_", substr(input$theRange[1],6,7), 
              substr(input$theRange[1],9,10), "_", substr(input$theRange[2],6,7), 
-             substr(input$theRange[2],9,10), "_", input$c_ls,
-             ".csv")
+             substr(input$theRange[2],9,10), ".csv")
     },
     
     content <- function(file) {
-      readr::write_excel_csv(ConvData(), file)
+      readr::write_excel_csv(ConvData2(), file)
     }
   ) ### downloadDataの最終部分 ###
   

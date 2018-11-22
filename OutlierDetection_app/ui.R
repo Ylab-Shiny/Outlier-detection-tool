@@ -17,6 +17,7 @@ header <- dashboardHeader(title = "スマートBEMSの外れ値検出ツール",
 sidebar <- dashboardSidebar(
   # サイドバーメニュー
   sidebarMenu(
+    menuItem("初期データ", tabName = "initDF", icon = icon("table")),
     menuItem("外れ値の所在リスト", tabName = "OutlierList", icon = icon("list")),
     menuItem("外れ値の時刻と外れ値", tabName = "Outliers", icon = icon("crosshairs")),
     menuItem("置き換え後のデータ", tabName = "Dataset", icon = icon("table")),
@@ -37,7 +38,9 @@ sidebar <- dashboardSidebar(
 # body #
 body <- dashboardBody(
   tabItems(
-    tabItem(tabName = "OutlierList", dataTableOutput("DataTable")),
+    tabItem(tabName = "initDF", dataTableOutput("initData")),
+    tabItem(tabName = "OutlierList", h2(textOutput("d_date")),
+            dataTableOutput("DataTable")),
     tabItem(tabName = "Outliers", dataTableOutput("dt_each")),
     tabItem(tabName = "Dataset", dataTableOutput("dt_conv"), 
             downloadButton("downloadData", "データセットのダウンロード")),
