@@ -260,12 +260,18 @@ shinyServer(function(input, output, session){
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
       thirdData <- summary(secondData) %>% as.data.frame() %>% 
         filter(Var2 == input$c_ls) %>% select(Freq)
-      names(thirdData)[1] <- "統計情報"
+      fourthData <- thirdData %>% separate(Freq, into = c("tags", "values"), sep = ":")
+      Mean <- mean(secondData[[2]], na.rm = T) %>% round(digits = 2)
+      Sigma <- sd(secondData[[2]], na.rm = T) %>% round(digits = 2)
+      tags <- c("Standard Deviation", "Mean - 5SD", "Mean + 10SD")
+      values <- c(Sigma, (Mean-5*Sigma), (Mean+10*Sigma))
+      addline <- data.frame(tags, values)
+      fifthData <- rbind(fourthData, addline) %>% as.data.frame()
     } else {
-      thirdData <- NULL
+      fifthData <- NULL
     }
     
-    return(thirdData)
+    return(fifthData)
   }) ### S_oriの最終部分
   
   # オリジナルデータの集計の出力
@@ -279,12 +285,18 @@ shinyServer(function(input, output, session){
       firstData <- ConvData() %>% select(label, input$c_ls)
       secondData <- summary(firstData) %>% as.data.frame() %>% 
         filter(Var2 == input$c_ls) %>% select(Freq)
-      names(secondData)[1] <- "統計情報"
+      thirdData <- secondData %>% separate(Freq, into = c("tags", "values"), sep = ":")
+      Mean <- mean(firstData[[2]], na.rm = T) %>% round(digits = 2)
+      Sigma <- sd(firstData[[2]], na.rm = T) %>% round(digits = 2)
+      tags <- c("Standard Deviation", "Mean - 5SD", "Mean + 10SD")
+      values <- c(Sigma, (Mean-5*Sigma), (Mean+10*Sigma))
+      addline <- data.frame(tags, values)
+      fourthData <- rbind(thirdData, addline) %>% as.data.frame()
     } else {
-      secondData <- NULL
+      fourthData <- NULL
     }
     
-    return(secondData)
+    return(fourthData)
   })
   
   # オリジナルデータの集計の出力
@@ -338,6 +350,32 @@ shinyServer(function(input, output, session){
     
     content <- function(file) {
       readr::write_excel_csv(ConvData2(), file)
+    }
+  ) ### downloadDataの最終部分 ###
+  
+  # 外れ値をNAに変換する前の集計のダウンロード
+  output$downloadSummaryB <- downloadHandler(
+    filename = function() {
+      paste0("BeforeSummary", substr(input$theRange[1],1,4), "_", substr(input$theRange[1],6,7), 
+             substr(input$theRange[1],9,10), "_", substr(input$theRange[2],6,7), 
+             substr(input$theRange[2],9,10),"_", input$c_ls, ".csv")
+    },
+    
+    content = function(file) {
+      readr::write_excel_csv(S_ori(), file)
+    }
+  ) ### downloadDataの最終部分 ###
+  
+  # 外れ値をNAに変換後の集計のダウンロード
+  output$downloadSummaryA <- downloadHandler(
+    filename = function() {
+      paste0("AfterSummary", substr(input$theRange[1],1,4), "_", substr(input$theRange[1],6,7), 
+             substr(input$theRange[1],9,10), "_", substr(input$theRange[2],6,7), 
+             substr(input$theRange[2],9,10), "_", input$c_ls, ".csv")
+    },
+    
+    content = function(file) {
+      readr::write_excel_csv(S_con(), file)
     }
   ) ### downloadDataの最終部分 ###
   
