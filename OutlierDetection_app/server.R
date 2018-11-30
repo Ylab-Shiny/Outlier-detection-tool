@@ -339,7 +339,7 @@ shinyServer(function(input, output, session){
     Splot()
     }) ### scatterPlotの最終部分
   
-  ## ダウンロードボタン ##
+  ## ダウンロードボタン ############################################
   # 外れ値をNAに変換したのデータセット
   output$downloadData <- downloadHandler(
     filename = function() {
@@ -416,5 +416,20 @@ shinyServer(function(input, output, session){
       print(plot)
       dev.off()
     }) ### downloadTgraghの最終部分 ###
+  
+  # 外れ値の時刻と外れ値のリストをダウンロード
+  output$downloadOutliers <- downloadHandler(
+    filename = function() {
+      paste0("Outliers", substr(input$theRange[1],1,4), "_", substr(input$theRange[1],6,7), 
+             substr(input$theRange[1],9,10), "_", substr(input$theRange[2],6,7), 
+             substr(input$theRange[2],9,10),"_", input$c_ls, ".csv")
+    },
+    
+    content = function(file) {
+      readr::write_excel_csv(outliers_each(), file)
+    }
+  ) ### downloadOutliersの最終部分
+  
+  ###################################################################
   
 }) ###  shinyServerの最終部分
