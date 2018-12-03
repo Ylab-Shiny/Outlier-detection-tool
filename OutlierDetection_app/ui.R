@@ -11,7 +11,7 @@
 
 ### 構成要素 ###
 # header #
-header <- dashboardHeader(title = "スマートBEMSの外れ値検出ツール", titleWidth = 500) ### headerの最終部分
+header <- dashboardHeader(title = "外れ値検出ツール", titleWidth = 500) ### headerの最終部分
 
 # sidebar #
 sidebar <- dashboardSidebar(
