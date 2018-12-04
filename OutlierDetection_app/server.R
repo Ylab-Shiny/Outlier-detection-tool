@@ -4,10 +4,9 @@
 # ライブラリ一覧
 {
   library(shiny)
-  library(RColorBrewer)
   library(DT)
-  library(shinyBS)
-  library(tidyverse)
+  library(dplyr)
+  library(readr)
   library(ruler)
 }
 # ブラウザでの立ち上げ

@@ -5,8 +5,6 @@
 {
   library(shiny)
   library(shinydashboard)
-  library(shinyBS)
-  library(shinythemes)
 }
 
 ### 構成要素 ###
