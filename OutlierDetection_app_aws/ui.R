@@ -35,14 +35,14 @@ sidebar <- dashboardSidebar(
 # body #
 body <- dashboardBody(
   tabItems(
-    tabItem(tabName = "initDF", dataTableOutput("initData")),
-    tabItem(tabName = "Outliers", dataTableOutput("dt_each"), 
+    tabItem(tabName = "initDF", DT::dataTableOutput("initData")),
+    tabItem(tabName = "Outliers", DT::dataTableOutput("dt_each"), 
             downloadButton("downloadOutliers", "ダウンロード")),
-    tabItem(tabName = "Dataset", dataTableOutput("dt_conv"), 
+    tabItem(tabName = "Dataset", DT::dataTableOutput("dt_conv"), 
             downloadButton("downloadData", "データセットのダウンロード")),
-    tabItem(tabName = "Summary", h2("外れ値を含めた集計"), dataTableOutput("summary_ori"), 
+    tabItem(tabName = "Summary", h2("外れ値を含めた集計"), DT::dataTableOutput("summary_ori"), 
             downloadButton("downloadSummaryB", "集計(元データ)のダウンロード"),
-            h2("外れ値を欠損値に置き換えた後の集計"), dataTableOutput("summary_con"),
+            h2("外れ値を欠損値に置き換えた後の集計"), DT::dataTableOutput("summary_con"),
             downloadButton("downloadSummaryA", "集計(変換データ)のダウンロード")),
     tabItem(tabName = "Scatter", plotOutput("scatterPlot"),
             downloadButton("downloadSplot", "散布図のダウンロード")),

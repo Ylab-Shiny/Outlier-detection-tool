@@ -7,6 +7,8 @@
   library(DT)
   library(dplyr)
   library(ruler)
+  library(ggplot2)
+  library(tidyr)
 }
 # ブラウザでの立ち上げ
 options(shiny.launch.browser = T)
@@ -30,7 +32,8 @@ shinyServer(function(input, output, session){
   ## 初期データ #################################
   initData <- reactive({
     if (!is.null(input$file)) {
-      firstData <- read.csv(input$file$datapath, header = F, stringsAsFactors = F)
+      firstData <- read.csv(input$file$datapath, header = F, stringsAsFactors = F, 
+                            fileEncoding = "cp932", encoding = "UTF-8")
       names(firstData) <- firstData[1,]
       names(firstData)[1] <- "label"
       firstData <- firstData[-1,]
@@ -56,7 +59,7 @@ shinyServer(function(input, output, session){
                 scrollX = "200px",
                 scrollY = "700px",
                 scrollCollapse = T
-              ))
+                ))
   }) ### DataTableの最終部分
   
   # 外れ値判定を行う日付範囲
@@ -215,8 +218,8 @@ shinyServer(function(input, output, session){
       names(Data_trend) <- c("Time", "Values")
       
       p <- Data_trend %>% ggplot(aes_string(x="Time", y="Values")) + geom_line() +
-        ggtitle(paste0(input$c_ls, "のトレンドグラフ")) + ylim(0, max(ConvData()[[2]])) +
-        labs(x="時刻", y="電力消費[kW]")
+        ggtitle("TrendGragh") + ylim(0, max(ConvData()[[2]])) +
+        labs(x="Time", y="Values")
       
       print(p)
     } else {
@@ -316,8 +319,8 @@ shinyServer(function(input, output, session){
     if (!is.null(input$file)) {
       p <- Data_scat() %>% ggplot(aes_string(x="Time", y="Values", color="CoinfidenceInterval")) +
         geom_point() + ylim(min(Data_scat()[[2]]), max(Data_scat()[[2]])) + 
-        ggtitle(paste0(input$c_ls, "の散布図")) + 
-        labs(x="時刻", y="電力消費[kW]", color="信頼区間内かどうか")
+        ggtitle("ScatterPlot") + 
+        labs(x="Time", y="Values", color="is.na")
       
       print(p)
     } else {
