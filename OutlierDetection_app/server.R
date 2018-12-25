@@ -8,11 +8,12 @@
   library(dplyr)
   library(readr)
   library(ruler)
+  library(tidyr)
 }
 # ブラウザでの立ち上げ
 options(shiny.launch.browser = T)
-# アップロードできるファイルのサイズを50MBまでとする
-options(shiny.maxRequestSize = 50*1024^2)
+# アップロードできるファイルのサイズを150MBまでとする
+options(shiny.maxRequestSize = 150*1024^2)
 
 # 信頼区間の設定
 within_range <- function(x, na.rm = T) {
