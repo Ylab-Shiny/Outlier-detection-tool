@@ -1,5 +1,5 @@
 ##############################################################################################################################
-#### 外れ値特定ツール -- server.R ############################################################################################
+#### 外れ値検出ツール -- server.R ############################################################################################
 ##############################################################################################################################
 # ライブラリ一覧
 {
@@ -45,8 +45,8 @@ shinyServer(function(input, output, session){
   output$initData <- renderDataTable({
     datatable(initData(),
               options = list(
-                lengthMenu = c(10, 100, 1000),
-                pageLength = 100,
+                lengthMenu = c(24, 48, 1440),
+                pageLength = 24,
                 width = 1000,
                 scrollX = "200px",
                 scrollY = "700px",
@@ -57,7 +57,7 @@ shinyServer(function(input, output, session){
   # 外れ値判定を行う日付範囲
   theDate <- reactive({
     if (!is.null(input$file)) {
-      texts <- paste0("外れ値判定を行った日付範囲は", substr(initData()$label[1], 1, 10),
+      texts <- paste0("外れ値検出を行った日付範囲は", substr(initData()$label[1], 1, 10),
                       "から", substr(initData()$label[nrow(initData())], 1, 10), "です")
     } else {
       texts <- NULL
@@ -206,8 +206,8 @@ shinyServer(function(input, output, session){
   output$dt_conv <- renderDataTable({
     datatable(ConvData2(),
               options = list(
-                lengthMenu = c(10, 100, 1000),
-                pageLength = 100,
+                lengthMenu = c(24, 48, 1440),
+                pageLength = 24,
                 width = 1000,
                 scrollX = "200px",
                 scrollY = "700px",
@@ -225,7 +225,7 @@ shinyServer(function(input, output, session){
       
       p <- Data_trend %>% ggplot(aes_string(x="Time", y="Values")) + geom_line() +
         ggtitle(paste0(input$c_ls, "のトレンドグラフ")) + ylim(0, max(ConvData()[[2]])) +
-        labs(x="時刻", y="電力消費[kW]")
+        labs(x="時間", y="データ値")
       
       print(p)
     } else {
@@ -258,20 +258,13 @@ shinyServer(function(input, output, session){
       firstData <- initData() %>% select(label, input$c_ls)
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
-      thirdData <- summary(secondData) %>% as.data.frame() %>% 
-        filter(Var2 == input$c_ls) %>% select(Freq)
+      thirdData <- summary(secondData[,2]) %>% as.data.frame() %>% select(Freq)
       fourthData <- thirdData %>% separate(Freq, into = c("tags", "values"), sep = ":")
-      Mean <- mean(secondData[[2]], na.rm = T) %>% round(digits = 2)
-      Sigma <- sd(secondData[[2]], na.rm = T) %>% round(digits = 2)
-      tags <- c("Standard Deviation", "Mean - 5SD", "Mean + 10SD")
-      values <- c(Sigma, (Mean-5*Sigma), (Mean+10*Sigma))
-      addline <- data.frame(tags, values)
-      fifthData <- rbind(fourthData, addline) %>% as.data.frame()
     } else {
-      fifthData <- NULL
+      fourthData <- NULL
     }
     
-    return(fifthData)
+    return(fourthData)
   }) ### S_oriの最終部分
   
   # オリジナルデータの集計の出力
@@ -283,20 +276,13 @@ shinyServer(function(input, output, session){
   S_con <- reactive({
     if (!is.null(input$file)) {
       firstData <- ConvData() %>% select(label, input$c_ls)
-      secondData <- summary(firstData) %>% as.data.frame() %>% 
-        filter(Var2 == input$c_ls) %>% select(Freq)
+      secondData <- summary(firstData[,2]) %>% as.data.frame() %>% select(Freq)
       thirdData <- secondData %>% separate(Freq, into = c("tags", "values"), sep = ":")
-      Mean <- mean(firstData[[2]], na.rm = T) %>% round(digits = 2)
-      Sigma <- sd(firstData[[2]], na.rm = T) %>% round(digits = 2)
-      tags <- c("Standard Deviation", "Mean - 5SD", "Mean + 10SD")
-      values <- c(Sigma, (Mean-5*Sigma), (Mean+10*Sigma))
-      addline <- data.frame(tags, values)
-      fourthData <- rbind(thirdData, addline) %>% as.data.frame()
     } else {
-      fourthData <- NULL
+      thirdData <- NULL
     }
     
-    return(fourthData)
+    return(thirdData)
   })
   
   # オリジナルデータの集計の出力
@@ -326,7 +312,7 @@ shinyServer(function(input, output, session){
       p <- Data_scat() %>% ggplot(aes_string(x="Time", y="Values", color="CoinfidenceInterval")) +
         geom_point() + ylim(min(Data_scat()[[2]]), max(Data_scat()[[2]])) + 
         ggtitle(paste0(input$c_ls, "の散布図")) + 
-        labs(x="時刻", y="電力消費[kW]", color="信頼区間内かどうか")
+        labs(x="時間", y="データ値", color="信頼区間内かどうか")
       
       print(p)
     } else {
