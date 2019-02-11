@@ -14,6 +14,31 @@ library(tidyr)
 
 # shinyServer関数外 ----------------------------------------------------------
 
+OutlierDetection <- function(BivariateDataframe) {
+  var1 <- BivariateDataframe[[2]] %>% data.frame()
+  xx1 <- var1 %>% mutate(
+    Norm = (var1[[1]]-min(var1[[1]], na.rm = T)) / 
+      (max(var1[[1]], na.rm = T)-min(var1[[1]], na.rm = T))
+  )
+  qq <- data.frame(quantile(xx1$Norm,c(0.25, 0.75), na.rm = T))
+  Q1 <- qq[1, 1]
+  Q3 <- qq[2, 1]
+  
+  outer_l_Q1 <- Q1 - 1.5 * (Q3 - Q1)
+  outer_m_Q3 <- Q3 + 3 * (Q3 - Q1)
+  outer_ll <- which(xx1$Norm < outer_l_Q1)
+  outer_mm <- which(xx1$Norm > outer_m_Q3)
+  
+  # 重複なく昇順に行番号を抽出
+  row_num_out <- unique(c(outer_ll, outer_mm)) %>% sort()
+  
+  # 外れ値の出力
+  outer_outlier <- cbind.data.frame(BivariateDataframe[row_num_out,], row_number = row_num_out)
+  return(outer_outlier)
+  
+}
+
+
 # ブラウザでの立ち上げ
 options(shiny.launch.browser = T)
 # アップロードできるファイルのサイズを150MBまでとする
@@ -81,7 +106,7 @@ shinyServer(function(input, output, session){
 
   # theDateの出力 --------------------------------------------------------------
 
-  output$d_date <-  renderText(theDate())
+  output$d_date <- renderText(theDate())
   
 
   # initData2 ---------------------------------------------------------------
@@ -103,7 +128,7 @@ shinyServer(function(input, output, session){
   dataZ <- reactive({
     if (!is.null(input$file)) {
       firstData <- initData() 
-      # 文字型になっている数値を数値型に変換
+      # 文字型になっているデータを数値型に変換
       secondData <- firstData[, -1] %>% transmute_all(as.numeric)
       thirdData <- secondData %>% transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T)))
     } else {
@@ -159,13 +184,13 @@ shinyServer(function(input, output, session){
   
 
   # outliers_each -----------------------------------------------------------
-
+  
+  # 選択された列名の外れ値を検出
   outliers_each <- reactive({
     if (!is.null(input$file)) {
-      firstData <- initData() %>% select(label, input$c_ls) %>% mutate(`行番号` = c(1:nrow(initData())))
-      ids <- report() %>% filter(`列名` == input$c_ls)
-      secondData <- firstData[ids[[2]],]
-      names(secondData)[1] <- "時刻"
+      firstData <- initData() %>% select(label, input$c_ls)
+      secondData <- OutlierDetection(firstData)
+      names(secondData) <- c("時刻", "観測値", "行番号")
     } else {
       secondData <- NULL
     }
