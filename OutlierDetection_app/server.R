@@ -1,15 +1,19 @@
 ##############################################################################################################################
 #### 外れ値検出ツール -- server.R ############################################################################################
 ##############################################################################################################################
-# ライブラリ一覧
-{
-  library(shiny)
-  library(DT)
-  library(dplyr)
-  library(readr)
-  library(ruler)
-  library(tidyr)
-}
+
+# 読み込むパッケージ ---------------------------------------------------------------
+library(shiny)
+library(DT)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ruler)
+library(tidyr)
+
+
+# shinyServer関数外 ----------------------------------------------------------
+
 # ブラウザでの立ち上げ
 options(shiny.launch.browser = T)
 # アップロードできるファイルのサイズを150MBまでとする
@@ -26,10 +30,14 @@ row_packs_isnt_out <- row_packs(
   column = . %>% transmute_if(is.numeric, within_range)
 )
 
-## shinyサーバー ##
+
+# shinyServer関数内 ----------------------------------------------------------
+
 shinyServer(function(input, output, session){
   
-  ## 初期データ #################################
+
+  # 初期データ initData ----------------------------------------------------------
+
   initData <- reactive({
     if (!is.null(input$file)) {
       firstData <- read_csv(input$file$datapath)
@@ -39,9 +47,11 @@ shinyServer(function(input, output, session){
     }
     
     return(firstData)
-  }) ### initDataの最終部分
+  }) 
   
-  # 初期データの出力
+
+  # initDataの出力 -------------------------------------------------------------
+
   output$initData <- renderDataTable({
     datatable(initData(),
               options = list(
@@ -52,9 +62,11 @@ shinyServer(function(input, output, session){
                 scrollY = "700px",
                 scrollCollapse = T
               ))
-  }) ### DataTableの最終部分
+  })
   
-  # 外れ値判定を行う日付範囲
+
+  # 外れ値判定を行う日付範囲　theDate ----------------------------------------------------
+
   theDate <- reactive({
     if (!is.null(input$file)) {
       texts <- paste0("外れ値検出を行った日付範囲は", substr(initData()$label[1], 1, 10),
@@ -64,11 +76,16 @@ shinyServer(function(input, output, session){
     }
     
     return(texts)
-  }) ### theDateの最終部分
+  }) 
   
-  # theDateの出力
+
+  # theDateの出力 --------------------------------------------------------------
+
   output$d_date <-  renderText(theDate())
   
+
+  # initData2 ---------------------------------------------------------------
+
   initData2 <- reactive({
     firstData <- initData() %>% select(label, input$c_ls)
     C_interval <- firstData %>% select(input$c_ls) %>% 
@@ -78,10 +95,10 @@ shinyServer(function(input, output, session){
     secondData <- cbind(firstData, C_interval) %>% as.data.frame()
     
     return(secondData)
-  }) ### initData2の最終部分
-  ##############################################
-  
-  
+  })
+
+  # dataZ -------------------------------------------------------------------
+
   # zスコアに変換
   dataZ <- reactive({
     if (!is.null(input$file)) {
@@ -94,11 +111,14 @@ shinyServer(function(input, output, session){
     }
     
     return(thirdData)
-  }) ### dataZの最終部分
-  
+  })
+
+  # report ------------------------------------------------------------------
+
   report <- reactive({
     if (!is.null(input$file)) {
-      breaker_report <- dataZ() %>% expose(row_packs_isnt_out, .remove_obeyers = T) %>% get_report() %>% 
+      breaker_report <- dataZ() %>% 
+        expose(row_packs_isnt_out, .remove_obeyers = T) %>% get_report() %>% 
         filter(value == F) %>% select(rule, id)
       names(breaker_report) <- c("列名", "外れ値のある行番号")
     } else {
@@ -106,10 +126,11 @@ shinyServer(function(input, output, session){
     }
     
     return(breaker_report)
-  }) ### reportの最終部分 
+  })
     
-  
-  # reportのアウトプット
+
+  # reportのアウトプット DataTable -------------------------------------------------
+
   output$DataTable <- renderDataTable({
     datatable(report(),
               options = list(
@@ -120,9 +141,10 @@ shinyServer(function(input, output, session){
                 scrollY = "700px",
                 scrollCollapse = T
               ))
-  }) ### DataTableの最終部分
-  
-  # データ列のプルダウンリスト
+  })
+
+  # データ列のプルダウンリスト columns_ls ------------------------------------------------
+
   output$columns_ls <- renderUI({
     if (!is.null(input$file)) {
       cnames <- names(initData())
@@ -133,9 +155,11 @@ shinyServer(function(input, output, session){
     }
     
     return(si)
-  }) ### columns_outの最終部分
+  })
   
-  # 列ごとに外れ値と時刻を取り出す
+
+  # outliers_each -----------------------------------------------------------
+
   outliers_each <- reactive({
     if (!is.null(input$file)) {
       firstData <- initData() %>% select(label, input$c_ls) %>% mutate(`行番号` = c(1:nrow(initData())))
@@ -147,8 +171,11 @@ shinyServer(function(input, output, session){
     }
     
     return(secondData)
-  }) ### outliers_eachの最終部分
+  })
   
+
+  # dt_each -----------------------------------------------------------------
+
   # 各列の外れ値をDTで出力
   output$dt_each <- renderDataTable({
     datatable(outliers_each(),
@@ -160,8 +187,11 @@ shinyServer(function(input, output, session){
                 scrollY = "700px",
                 scrollCollapse = T
               ))
-  }) ### dt_eachの最終部分
+  })
   
+
+  # ConvData ----------------------------------------------------------------
+
   # オリジナルのNAorと検出された外れ値のNAdeをNAで表したデータセット
   ConvData <- reactive({
     if (!is.null(input$file)) {
@@ -175,8 +205,10 @@ shinyServer(function(input, output, session){
     }
     
     return(secondData)
-  }) ### ConvDataの最終部分
-  
+  })
+
+  # ConvData2 ---------------------------------------------------------------
+
   ConvData2 <- reactive({
     if (!is.null(input$file)) {
       namels <- names(initData())
@@ -200,8 +232,10 @@ shinyServer(function(input, output, session){
     }
     
     return(df)
-  }) ### ConvData2の最終部分
-  
+  })
+
+  # dt_conv -----------------------------------------------------------------
+
   # 外れ値をNAに変換したデータセットをDTで出力
   output$dt_conv <- renderDataTable({
     datatable(ConvData2(),
@@ -213,9 +247,11 @@ shinyServer(function(input, output, session){
                 scrollY = "700px",
                 scrollCollapse = T
               ))
-  }) ### dt_convの最終部分
+  })
   
-  ## トレンドグラフ ##
+
+  # トレンドグラフ Tgragh ----------------------------------------------------------
+
   Tgragh <- reactive({
     if (!is.null(input$file)) {
       Data_trend <- initData() %>% select(label, input$c_ls) %>% 
@@ -231,13 +267,17 @@ shinyServer(function(input, output, session){
     } else {
       print(NULL)
     }
-  }) ### Tgraghの最終部分
+  })
   
-  # トレンドグラフオブジェクトの出力
+
+  # トレンドグラフオブジェクトの出力 --------------------------------------------------------
+
   output$Trendgragh <- renderPlot({
     Tgragh()
-  }) ### Trendgraghの最終部分
-  
+  })
+
+  # DateRange ---------------------------------------------------------------
+
   # カレンダーによる日付範囲の設定
   output$DateRange <- renderUI({
     if (!is.null(input$file)) {
@@ -250,8 +290,10 @@ shinyServer(function(input, output, session){
     }
     
     return(Range)
-  }) ### DateRangeの最終部分
-  
+  })
+
+  # S_ori -------------------------------------------------------------------
+
   # オリジナルデータの集計
   S_ori <- reactive({
     if (!is.null(input$file)) {
@@ -265,13 +307,18 @@ shinyServer(function(input, output, session){
     }
     
     return(fourthData)
-  }) ### S_oriの最終部分
+  })
   
+
+  # summary_ori -------------------------------------------------------------
+
   # オリジナルデータの集計の出力
   output$summary_ori <- renderDataTable({
     datatable(S_ori())
-  }) ### summary_oriの最終部分
-  
+  })
+
+  # S_con -------------------------------------------------------------------
+
   # 外れ値をNAとした後の集計
   S_con <- reactive({
     if (!is.null(input$file)) {
@@ -284,13 +331,17 @@ shinyServer(function(input, output, session){
     
     return(thirdData)
   })
-  
+
+  # summary_con -------------------------------------------------------------
+
   # オリジナルデータの集計の出力
   output$summary_con <- renderDataTable({
     datatable(S_con())
-  }) ### summary_conの最終部分
+  })
   
-  ## データの散布図 ##
+
+  # データの散布図 -----------------------------------------------------------------
+
   # 散布図用のデータ
   Data_scat <- reactive({
     if (!is.null(input$file)) {
@@ -304,9 +355,11 @@ shinyServer(function(input, output, session){
     }
     
     return(secondData)
-  }) ### Data_scatの最終部分
+  })
   
-  # 散布図オブジェクト Splot
+
+  # 散布図オブジェクト Splot ---------------------------------------------------------
+
   Splot <- reactive({
     if (!is.null(input$file)) {
       p <- Data_scat() %>% ggplot(aes_string(x="Time", y="Values", color="CoinfidenceInterval")) +
@@ -318,14 +371,19 @@ shinyServer(function(input, output, session){
     } else {
       print(NULL)
     }
-  }) ### Splotの最終部分
+  })
   
+
+  # scatterPlot -------------------------------------------------------------
+
   # 散布図オブジェクトの出力
   output$scatterPlot <- renderPlot({
     Splot()
-    }) ### scatterPlotの最終部分
+    })
   
-  ## ダウンロードボタン ############################################
+
+  # downloadData ---------------------------------------------------------------
+
   # 外れ値をNAに変換したのデータセット
   output$downloadData <- downloadHandler(
     filename = function() {
@@ -337,8 +395,10 @@ shinyServer(function(input, output, session){
     content <- function(file) {
       readr::write_excel_csv(ConvData2(), file)
     }
-  ) ### downloadDataの最終部分 ###
-  
+  ) 
+
+  # downloadSummaryB --------------------------------------------------------
+
   # 外れ値をNAに変換する前の集計のダウンロード
   output$downloadSummaryB <- downloadHandler(
     filename = function() {
@@ -350,8 +410,10 @@ shinyServer(function(input, output, session){
     content = function(file) {
       readr::write_excel_csv(S_ori(), file)
     }
-  ) ### downloadDataの最終部分 ###
-  
+  )
+
+  # downloadSummaryA --------------------------------------------------------
+
   # 外れ値をNAに変換後の集計のダウンロード
   output$downloadSummaryA <- downloadHandler(
     filename = function() {
@@ -363,8 +425,10 @@ shinyServer(function(input, output, session){
     content = function(file) {
       readr::write_excel_csv(S_con(), file)
     }
-  ) ### downloadDataの最終部分 ###
-  
+  )
+
+  # downloadSplot -----------------------------------------------------------
+
   # 散布図のダウンロード 
   output$downloadSplot <- downloadHandler(
     contentType = 'image/png',
@@ -382,9 +446,11 @@ shinyServer(function(input, output, session){
       plot <- Splot()
       print(plot)
       dev.off()
-    }) ### downloadSplotの最終部分 ###
-  
-  ## 散布図のダウンロード 
+    })
+
+  # downloadTgragh ----------------------------------------------------------
+
+  # トレンドグラフのダウンロード 
   output$downloadTgragh <- downloadHandler(
     contentType = 'image/png',
     filename <- function() {
@@ -401,8 +467,10 @@ shinyServer(function(input, output, session){
       plot <- Tgragh()
       print(plot)
       dev.off()
-    }) ### downloadTgraghの最終部分 ###
-  
+    })
+
+  # downloadOutliers --------------------------------------------------------
+
   # 外れ値の時刻と外れ値のリストをダウンロード
   output$downloadOutliers <- downloadHandler(
     filename = function() {
@@ -414,8 +482,7 @@ shinyServer(function(input, output, session){
     content = function(file) {
       readr::write_excel_csv(outliers_each(), file)
     }
-  ) ### downloadOutliersの最終部分
+  )
   
-  ###################################################################
   
-}) ###  shinyServerの最終部分
+})

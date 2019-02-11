@@ -1,17 +1,23 @@
 ##############################################################################################################################
 #### 外れ値検出ツール -- ui.R ################################################################################################
 ##############################################################################################################################
-# ライブラリ一覧
-{
-  library(shiny)
-  library(shinydashboard)
-}
+
+# 読み込むパッケージ ---------------------------------------------------------------
+
+library(shiny)
+library(shinydashboard)
+
 
 ### 構成要素 ###
-# header #
-header <- dashboardHeader(title = "多変量時系列データの外れ値検出ツール", titleWidth = 500) ### headerの最終部分
 
-# sidebar #
+# ヘッダー --------------------------------------------------------------------
+
+header <- dashboardHeader(title = "多変量時系列データの外れ値検出ツール",
+                          titleWidth = 500) 
+
+
+# サイドバー -------------------------------------------------------------------
+
 sidebar <- dashboardSidebar(
   # サイドバーメニュー
   sidebarMenu(
@@ -31,9 +37,11 @@ sidebar <- dashboardSidebar(
   uiOutput("columns_ls"),
   
   uiOutput("DateRange")
-) ### sidebarの最終部分
+)
 
-# body #
+
+# ボディ ---------------------------------------------------------------------
+
 body <- dashboardBody(
   tabItems(
     tabItem(tabName = "initDF", dataTableOutput("initData")),
@@ -54,7 +62,9 @@ body <- dashboardBody(
     tabItem(tabName = "Trend", plotOutput("Trendgragh"),
             downloadButton("downloadTgragh", "トレンドグラフのダウンロード"))
   )
-) ### bodyの最終部分
+)
 
-## 組み立て ##
+
+# アセンブリ -------------------------------------------------------------------
+
 dashboardPage(header, sidebar, body)
