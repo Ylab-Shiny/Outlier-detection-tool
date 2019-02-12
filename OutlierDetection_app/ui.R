@@ -12,7 +12,7 @@ library(shinydashboard)
 
 # ヘッダー --------------------------------------------------------------------
 
-header <- dashboardHeader(title = "多変量時系列データの外れ値検出ツール",
+header <- dashboardHeader(title = "時系列データの外れ値検出ツール",
                           titleWidth = 500) 
 
 
