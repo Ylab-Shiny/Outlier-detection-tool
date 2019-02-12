@@ -8,7 +8,6 @@ library(DT)
 library(dplyr)
 library(readr)
 library(ggplot2)
-library(ruler)
 library(tidyr)
 
 
