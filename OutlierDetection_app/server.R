@@ -14,20 +14,16 @@ library(tidyr)
 
 # shinyServer関数外 ----------------------------------------------------------
 
-OutlierDetection <- function(BivariateDataframe) {
+OutlierDetection <- function(BivariateDataframe, k1, k2) {
   var1 <- BivariateDataframe[[2]] %>% data.frame()
-  xx1 <- var1 %>% mutate(
-    Norm = (var1[[1]]-min(var1[[1]], na.rm = T)) / 
-      (max(var1[[1]], na.rm = T)-min(var1[[1]], na.rm = T))
-  )
-  qq <- data.frame(quantile(xx1$Norm,c(0.25, 0.75), na.rm = T))
+  qq <- data.frame(quantile(var1, c(0.25, 0.75), na.rm = T))
   Q1 <- qq[1, 1]
   Q3 <- qq[2, 1]
   
-  outer_l_Q1 <- Q1 - 1.5 * (Q3 - Q1)
-  outer_m_Q3 <- Q3 + 3 * (Q3 - Q1)
-  outer_ll <- which(xx1$Norm < outer_l_Q1)
-  outer_mm <- which(xx1$Norm > outer_m_Q3)
+  outer_l_Q1 <- Q1 - k1 * (Q3 - Q1)
+  outer_m_Q3 <- Q3 + k2 * (Q3 - Q1)
+  outer_ll <- which(var1 < outer_l_Q1)
+  outer_mm <- which(var1 > outer_m_Q3)
   
   # 重複なく昇順に行番号を抽出
   row_num_out <- unique(c(outer_ll, outer_mm)) %>% sort()
@@ -38,29 +34,41 @@ OutlierDetection <- function(BivariateDataframe) {
   
 }
 
+# テストデータ ------------------------------------------------------------------
+TestData <- read_csv("TestData.csv")
+
 
 # ブラウザでの立ち上げ
 options(shiny.launch.browser = T)
 # アップロードできるファイルのサイズを150MBまでとする
 options(shiny.maxRequestSize = 150*1024^2)
 
-# 信頼区間の設定
-within_range <- function(x, na.rm = T) {
-  interval <- -5 < x & x < 10
-  return(interval)
-}
-# 信頼区間内かどうかを判定する
-row_packs_isnt_out <- row_packs(
-  # 列に基づく非外れ値
-  column = . %>% transmute_if(is.numeric, within_range)
-)
-
-
 # shinyServer関数内 ----------------------------------------------------------
 
 shinyServer(function(input, output, session){
-  
 
+
+  # イメージ図の出力 ----------------------------------------------------------------
+
+  output$preImage <- renderImage({
+    filename <- normalizePath(file.path('./', paste('Splot_sample', '.png', sep='')))
+    
+    list(src = filename, align = "center")
+    
+  }, deleteFile = FALSE)
+
+  # テストデータのダウンロード -----------------------------------------------------------
+
+  output$downloadTest <- downloadHandler(
+    filename = function() {
+      "TestData.csv"
+    },
+    
+    content <- function(file) {
+      readr::write_excel_csv(TestData, file)
+    }
+  )
+  
   # 初期データ initData ----------------------------------------------------------
 
   initData <- reactive({
@@ -108,66 +116,15 @@ shinyServer(function(input, output, session){
 
   output$d_date <- renderText(theDate())
   
-
   # initData2 ---------------------------------------------------------------
 
   initData2 <- reactive({
     firstData <- initData() %>% select(label, input$c_ls)
-    C_interval <- firstData %>% select(input$c_ls) %>% 
-      transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T))) %>% 
-      transmute_all(within_range)
-    names(C_interval) <- "CI"
-    secondData <- cbind(firstData, C_interval) %>% as.data.frame()
     
-    return(secondData)
+    return(firstData)
   })
 
-  # dataZ -------------------------------------------------------------------
-
-  # zスコアに変換
-  dataZ <- reactive({
-    if (!is.null(input$file)) {
-      firstData <- initData() 
-      # 文字型になっているデータを数値型に変換
-      secondData <- firstData[, -1] %>% transmute_all(as.numeric)
-      thirdData <- secondData %>% transmute_all(funs((.-mean(., na.rm = T)) / sd(., na.rm = T)))
-    } else {
-      thirdData <- NULL
-    }
-    
-    return(thirdData)
-  })
-
-  # report ------------------------------------------------------------------
-
-  report <- reactive({
-    if (!is.null(input$file)) {
-      breaker_report <- dataZ() %>% 
-        expose(row_packs_isnt_out, .remove_obeyers = T) %>% get_report() %>% 
-        filter(value == F) %>% select(rule, id)
-      names(breaker_report) <- c("列名", "外れ値のある行番号")
-    } else {
-      breaker_report <- NULL
-    }
-    
-    return(breaker_report)
-  })
-    
-
-  # reportのアウトプット DataTable -------------------------------------------------
-
-  output$DataTable <- renderDataTable({
-    datatable(report(),
-              options = list(
-                lengthMenu = c(10, 100, 1000),
-                pageLength = 100,
-                width = 1000,
-                scrollX = "200px",
-                scrollY = "700px",
-                scrollCollapse = T
-              ))
-  })
-
+  
   # データ列のプルダウンリスト columns_ls ------------------------------------------------
 
   output$columns_ls <- renderUI({
@@ -181,15 +138,79 @@ shinyServer(function(input, output, session){
     
     return(si)
   })
-  
 
+  # 下側フェンスの定数k1入力UI ---------------------------------------------------------
+  
+  output$UI_k1 <- renderUI({
+    if (!is.null(input$file)) {
+      UI <- numericInput("k1", "下側フェンスの定数 k1 を入力してください", value = 1.5, step = 0.5) 
+    } else {
+      UI <- NULL
+    }
+    return(UI)
+  })
+
+  # 上側フェンスの定数k2入力UI ---------------------------------------------------------
+
+  output$UI_k2 <- renderUI({
+    if (!is.null(input$file)) {
+      UI <- numericInput("k2", "上側フェンスの定数 k2 を入力してください", value = 3.0, step = 0.5)
+    } else {
+      UI <- NULL
+    }
+    return(UI)
+  })
+  
+  # 下側フェンスの値 ----------------------------------------------------------------
+  
+  lower_value <- reactive({
+    if (!is.null(input$file)) {
+      Var <- initData() %>% select(input$c_ls)
+      qq <- data.frame(quantile(Var[[1]], c(0.25, 0.75), na.rm = T))
+      Q1 <- qq[1, 1]
+      Q3 <- qq[2, 1]
+      
+      l_value <- Q1 - input$k1[1] * (Q3 - Q1)
+    } else {
+      l_value <- NULL
+    }
+    return(l_value)
+  })
+  
+  # 上側フェンスの値 ----------------------------------------------------------------
+  
+  upper_value <- reactive({
+    if (!is.null(input$file)) {
+      Var <- initData() %>% select(input$c_ls)
+      qq <- data.frame(quantile(Var[[1]], c(0.25, 0.75), na.rm = T))
+      Q1 <- qq[1, 1]
+      Q3 <- qq[2, 1]
+      
+      u_value <- Q3 + input$k2[1] * (Q3 - Q1)
+    } else {
+      u_value <- NULL
+    }
+    return(u_value)
+  })
+
+  # 下限閾値と上限閾値のテキスト出力 --------------------------------------------------------
+
+  output$text_fence_values <- renderText({
+    if (!is.null(input$file)) {
+      Text <- paste0("下限閾値が", round(lower_value(), 2), ", 上限閾値が", round(upper_value(), 2), "です")
+    } else {
+      Text <- NULL
+    }
+    return(Text)
+  })
+  
   # outliers_each -----------------------------------------------------------
   
   # 選択された列名の外れ値を検出
   outliers_each <- reactive({
     if (!is.null(input$file)) {
       firstData <- initData() %>% select(label, input$c_ls)
-      secondData <- OutlierDetection(firstData)
+      secondData <- OutlierDetection(firstData, input$k1[1], input$k2[1])
       names(secondData) <- c("時刻", "観測値", "行番号")
     } else {
       secondData <- NULL
@@ -217,12 +238,12 @@ shinyServer(function(input, output, session){
 
   # ConvData ----------------------------------------------------------------
 
-  # オリジナルのNAorと検出された外れ値のNAdeをNAで表したデータセット
+  # 検出された外れ値NAで置き換えたデータセット
   ConvData <- reactive({
     if (!is.null(input$file)) {
       firstData <- initData() %>% select(label, input$c_ls)
-      ids <- report() %>% filter(`列名` == input$c_ls)
-      firstData[[2]][ids[[2]]] <- NA
+      ids <- outliers_each()[[3]]
+      firstData[[2]][ids] <- NA
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
     } else {
@@ -232,38 +253,11 @@ shinyServer(function(input, output, session){
     return(secondData)
   })
 
-  # ConvData2 ---------------------------------------------------------------
-
-  ConvData2 <- reactive({
-    if (!is.null(input$file)) {
-      namels <- names(initData())
-      
-      for (i in 1:length(namels)) {
-        if (i == 1) {
-          firstData <- initData()
-          df <- as.character(firstData[[1]])
-        } else {
-          x <- firstData[[i]]
-          ids <- report() %>% filter(`列名` == namels[i])
-          x[ids[[2]]] <- NA
-          df <- cbind(df, x)
-        }
-      }
-      df <- as.data.frame(df)
-      names(df) <- namels
-      
-    } else {
-      df <- NULL
-    }
-    
-    return(df)
-  })
-
   # dt_conv -----------------------------------------------------------------
 
   # 外れ値をNAに変換したデータセットをDTで出力
   output$dt_conv <- renderDataTable({
-    datatable(ConvData2(),
+    datatable(ConvData(),
               options = list(
                 lengthMenu = c(24, 48, 1440),
                 pageLength = 24,
@@ -285,7 +279,7 @@ shinyServer(function(input, output, session){
       names(Data_trend) <- c("Time", "Values")
       
       p <- Data_trend %>% ggplot(aes_string(x="Time", y="Values")) + geom_line() +
-        ggtitle(paste0(input$c_ls, "のトレンドグラフ")) + ylim(0, max(ConvData()[[2]])) +
+        ggtitle(paste0(input$c_ls, "のトレンドグラフ")) + ylim(min(ConvData()[[2]]), max(ConvData()[[2]])) +
         labs(x="時間", y="データ値")
       
       print(p)
@@ -370,11 +364,11 @@ shinyServer(function(input, output, session){
   # 散布図用のデータ
   Data_scat <- reactive({
     if (!is.null(input$file)) {
-      # NAのある行を除いておく
       firstData <- initData2()
+        
       secondData <- firstData %>% mutate(date = substr(label, 1, 10)) %>% 
         filter(date >= input$theRange[1] & date <= input$theRange[2]) %>% select(-date)
-      names(secondData) <- c("Time", "Values", "CoinfidenceInterval")
+      names(secondData) <- c("Time", "Values")
     } else {
       secondData <- NULL
     }
@@ -387,10 +381,16 @@ shinyServer(function(input, output, session){
 
   Splot <- reactive({
     if (!is.null(input$file)) {
-      p <- Data_scat() %>% ggplot(aes_string(x="Time", y="Values", color="CoinfidenceInterval")) +
-        geom_point() + ylim(min(Data_scat()[[2]]), max(Data_scat()[[2]])) + 
+      lower <- lower_value()
+      upper <- upper_value()
+      p <- Data_scat() %>% ggplot(aes(x = Time, y = Values, color = lower<Values & Values<upper)) +
+        geom_point() + ylim(lower-200, upper+200) + 
         ggtitle(paste0(input$c_ls, "の散布図")) + 
-        labs(x="時間", y="データ値", color="信頼区間内かどうか")
+        labs(x="時間", y="データ値", color="信頼区間内か？") + 
+        geom_hline(yintercept = lower) + geom_hline(yintercept = upper) +
+        annotate("text",x=Data_scat()[[1]][10], y=lower-150, parse=T, size=4, label="{Q[1]}-{k[1]}*({Q[3]}-{Q[1]})") +
+        annotate("text", x=Data_scat()[[1]][10], y=upper+150, parse=T, size=4, label="{Q[1]}+{k[2]}*({Q[3]}-{Q[1]})")
+        
       
       print(p)
     } else {
@@ -418,7 +418,7 @@ shinyServer(function(input, output, session){
     },
     
     content <- function(file) {
-      readr::write_excel_csv(ConvData2(), file)
+      readr::write_excel_csv(ConvData(), file)
     }
   ) 
 
