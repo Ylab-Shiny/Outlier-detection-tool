@@ -70,16 +70,16 @@ body <- dashboardBody(
             imageOutput("preImage")
             ),
     
-    tabItem(tabName = "initDF", dataTableOutput("initData")),
-    tabItem(tabName = "Outliers", h2(textOutput("d_date")), dataTableOutput("dt_each"), 
+    tabItem(tabName = "initDF", DT::dataTableOutput("initData")),
+    tabItem(tabName = "Outliers", h2(textOutput("d_date")), DT::dataTableOutput("dt_each"), 
             downloadButton("downloadOutliers", "ダウンロード")),
     tabItem(tabName = "Dataset",
             h2("外れ値を欠損値に置き換えた単変量時系列データをダウンロードすることができます"),
-            dataTableOutput("dt_conv"), 
+            DT::dataTableOutput("dt_conv"), 
             downloadButton("downloadData", "データセットのダウンロード")),
-    tabItem(tabName = "Summary", h2("元データの基本統計量"), dataTableOutput("summary_ori"), 
+    tabItem(tabName = "Summary", h2("元データの基本統計量"), DT::dataTableOutput("summary_ori"), 
             downloadButton("downloadSummaryB", "基本統計量(元データ)のダウンロード"),
-            h2("外れ値を欠損値に置き換えた後の基本統計量"), dataTableOutput("summary_con"),
+            h2("外れ値を欠損値に置き換えた後の基本統計量"), DT::dataTableOutput("summary_con"),
             downloadButton("downloadSummaryA", "基本統計量(変換データ)のダウンロード")),
     tabItem(tabName = "Scatter", 
             h2("元データの散布図を描画します"),
@@ -92,7 +92,7 @@ body <- dashboardBody(
             plotOutput("Trendgragh"),
             downloadButton("downloadTgragh", "トレンドグラフのダウンロード"))
             )
-    )
+  )
 
 
 # アセンブリ -------------------------------------------------------------------

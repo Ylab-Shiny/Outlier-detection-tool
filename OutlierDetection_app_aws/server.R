@@ -33,7 +33,8 @@ OutlierDetection <- function(BivariateDataframe, k1, k2) {
 }
 
 # テストデータ ------------------------------------------------------------------
-TestData <- read.csv("TestData.csv", header = F, skip = 1, row.names = NULL, stringsAsFactors = F)
+TestData <- read.csv("TestData.csv", header = F, skip = 1, row.names = NULL,
+                     stringsAsFactors = F)
 TestData <- as_tibble(TestData)
 label <- paste0(substr(TestData$V1, 1, 10), " ", substr(TestData$V1, 12, 19))
 TestData$V1 <- label
@@ -73,7 +74,8 @@ shinyServer(function(input, output, session){
   
   initData <- reactive({
     if (!is.null(input$file)) {
-      firstData <- read.csv(input$file$datapath, header = F, skip = 1, row.names = NULL, stringsAsFactors = F)
+      firstData <- read.csv(input$file$datapath, header = F, skip = 1, row.names = NULL, 
+                            stringsAsFactors = F)
       firstData <- as_tibble(firstData)
       names(firstData)[1] <- "label"
     } else {
@@ -281,8 +283,8 @@ shinyServer(function(input, output, session){
       names(Data_trend) <- c("Time", "Values")
       
       p <- Data_trend %>% ggplot(aes_string(x="Time", y="Values")) + geom_line() +
-        ggtitle(paste0(input$c_ls, "のトレンドグラフ")) + ylim(min(ConvData()[[2]]), max(ConvData()[[2]])) +
-        labs(x="時間", y="データ値")
+        ggtitle(paste0(input$c_ls, "'s trend gragh")) + ylim(min(ConvData()[[2]]), max(ConvData()[[2]])) +
+        labs(x="Time", y="Value")
       
       print(p)
     } else {
@@ -387,8 +389,8 @@ shinyServer(function(input, output, session){
       upper <- upper_value()
       p <- Data_scat() %>% ggplot(aes(x = Time, y = Values, color = lower<Values & Values<upper)) +
         geom_point() + ylim(lower-200, upper+200) + 
-        ggtitle(paste0(input$c_ls, "の散布図")) + 
-        labs(x="時間", y="データ値", color="信頼区間内か？") + 
+        ggtitle(paste0(input$c_ls, "'s scatter plot")) + 
+        labs(x="Time", y="Value", color="Withn interval") + 
         geom_hline(yintercept = lower) + geom_hline(yintercept = upper) +
         annotate("text",x=Data_scat()[[1]][10], y=lower-150, parse=T, size=4, label="{Q[1]}-{k[1]}*({Q[3]}-{Q[1]})") +
         annotate("text", x=Data_scat()[[1]][10], y=upper+150, parse=T, size=4, label="{Q[1]}+{k[2]}*({Q[3]}-{Q[1]})")
@@ -501,9 +503,9 @@ shinyServer(function(input, output, session){
   # 外れ値の時刻と外れ値のリストをダウンロード
   output$downloadOutliers <- downloadHandler(
     filename = function() {
-      paste0("Outliers", substr(input$theRange[1],1,4), "_", substr(input$theRange[1],6,7), 
-             substr(input$theRange[1],9,10), "_", substr(input$theRange[2],6,7), 
-             substr(input$theRange[2],9,10),"_", input$c_ls, ".csv")
+      paste0("Outliers", substr(initData()[[1]][1],1,4), "_", substr(initData()[[1]][1],6,7), 
+             substr(initData()[[1]][1],9,10), "_", substr(initData()[[1]][nrow(initData())],6,7), 
+             substr(initData()[[1]][nrow(initData())],9,10),"_", input$c_ls, ".csv")
     },
     
     content = function(file) {

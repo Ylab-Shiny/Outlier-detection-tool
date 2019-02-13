@@ -1,0 +1,1 @@
+AWSのファイルエンコードは"cp932" read.csv(fileEncoding = "cp932")
